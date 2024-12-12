@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>AR.js Scene</title>
+    <script src="https://cdn.jsdelivr.net/gh/aframevr/aframe@1c2407b26c61958baa93967b5412487cd94b290b/dist/aframe-master.min.js"></script>
+    <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar-nft.js"></script>
+    
+    <script>
+        function showInfoBox(content) {
+            const infoBox = document.getElementById('info-box');
+            const infoContent = document.getElementById('info-content');
+            
+            // Actualizar el contenido del info-box
+            infoContent.innerHTML = content;
+
+            // Mostrar el info-box
+            infoBox.style.display = 'block';
+        }
+
+        // Ocultar el info-box
+        function hideInfoBox() {
+            const infoBox = document.getElementById('info-box');
+            infoBox.style.display = 'none';
+        }
+
+        AFRAME.registerComponent('modify-materials', {
+            init: function () {
+                this.el.addEventListener('model-loaded', () => {
+                    const obj = this.el.getObject3D('mesh');
+                    if (!obj) return;
+
+                    obj.traverse(node => {
+                        if (node.material) {
+                            // Make material emissive
+                            node.material.emissive = new THREE.Color(1, 1, 1); // White emissive
+                            node.material.emissiveIntensity = 15; // Increase emissive intensity
+
+                            // Adjust material properties
+                            node.material.metalness = 0.8; // Increase metalness for more reflection
+                            node.material.roughness = 0; // Lower roughness for a shiny surface
+
+                            // Increase base color intensity
+                            if (node.material.color) {
+                                node.material.color.multiplyScalar(3); // Brighten the base color even more
+                            }
+
+                            // Ensure it's not transparent
+                            node.material.transparent = false;
+                            node.material.opacity = 1;
+
+                            // Enable physical lighting
+                            node.material.envMapIntensity = 10; // Increase environment map intensity
+
+                            node.material.needsUpdate = true; // Update the material
+                        }
+                    });
+                });
+            }
+        });
+
+        AFRAME.registerComponent('stabilized-position', {
+            schema: {
+                smooth: { default: 20 }
+            },
+            init: function() {
+                this.lastPosition = new THREE.Vector3();
+                this.smoothedPosition = new THREE.Vector3();
+                this.originalPosition = this.el.object3D.position.clone();
+            },
+            tick: function() {
+                const currentPosition = this.el.object3D.position;
+                const smooth = this.data.smooth;
+                
+                this.smoothedPosition.x += (currentPosition.x - this.smoothedPosition.x) / smooth;
+                this.smoothedPosition.y += (currentPosition.y - this.smoothedPosition.y) / smooth;
+                this.smoothedPosition.z += (currentPosition.z - this.smoothedPosition.z) / smooth;
+                
+                this.el.object3D.position.copy(this.smoothedPosition);
+            }
+        });
+
+        AFRAME.registerComponent('clickable-sphere', {
+            schema: {
+                content: { type: 'string' }
+            },
+            init: function () {
+                // Hacer que la entidad sea interactiva
+                this.el.setAttribute('class', 'clickable');
+                
+                this.el.addEventListener('click', (evt) => {
+                    showInfoBox(this.data.content);
+                });
+            }
+        });
+
+        AFRAME.registerComponent('render-order', {
+            schema: {type: 'int', default: 0},
+            init: function () {
+                this.el.addEventListener('loaded', () => {
+                    const mesh = this.el.getObject3D('mesh');
+                    if (mesh) {
+                        mesh.renderOrder = this.data;
+                    }
+                });
+            }
+        });
+    </script>
+
+    <style>
+        .arjs-loader {
+            height: 100%;
+            width: 100%;
+            position: absolute;
+            top: 0;
+            left: 0;
+            background-color: rgba(0, 0, 0, 0.8);
+            z-index: 9999;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        .arjs-loader div {
+            text-align: center;
+            font-size: 1.25em;
+            color: white;
+        }
+        #info-box {
+            display: none;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            padding: 20px;
+            z-index: 99999;
+            font-size: 24px;
+            text-align: center;
+            border-radius: 10px;
+            /* box-shadow: 0 0 10px rgba(0,0,0,0.5); */
+        }
+        #info-box button {
+            margin-top: 10px;
+            padding: 10px;
+            background-color: black;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        #info-box button:hover {
+            background-color: darkred;
+        }
+        #info-box img{
+            max-width:400px;
+        }
+    </style>
+</head>
+<body style="margin: 0; overflow: hidden;">
+    <div class="arjs-loader">
+        <div>Loading, please wait...</div>
+    </div>
+    
+    <div id="info-box">
+        <div id="info-content"></div>
+        <button onclick="hideInfoBox()">Cerrar</button>
+    </div>
+
+    <a-scene
+        vr-mode-ui="enabled: false;"
+        renderer="logarithmicDepthBuffer: true; 
+        alpha: true; 
+        colorManagement: true; 
+        physicallyCorrectLights: true; 
+        antialias: true;
+        exposure: 2;
+        toneMapping: ACESFilmicToneMapping;"
+        embedded
+        arjs="trackingMethod: best; sourceType: webcam; debugUIEnabled: false; maxDetectionRate: 30; detectionMode: mono_and_matrix; matrixCodeType: 4x4;"
+        cursor="rayOrigin: mouse; fuse: true"
+        raycaster="objects: .clickable"
+    >   
+        <a-nft
+            type="nft"
+            url="https://firebrick-fly-833771.hostingersite.com/ar/nft/crab_alpha_00000"
+            smooth="true"
+            smoothCount="20"
+            smoothTolerance=".001"
+            smoothThreshold="2"
+            >
+            <a-entity
+                gltf-model="https://firebrick-fly-833771.hostingersite.com/ar/cangrejo_G_glb.gltf"
+                scale="250 250 250"
+                position="300 300 0"
+                rotation="250 0 0"
+                stabilized-position="smooth: 100"
+                material="metalness: 0; roughness: 0; emissive: #ffffff; emissiveIntensity: 15;"
+                light="type: point; intensity: 5; distance: 50; decay: 1"
+            >
+            <a-image 
+                src="https://firebrick-fly-833771.hostingersite.com/ar/assets/pin/pin-1.png"
+                position="0.5 0.5 0"
+                scale="0.2 0.2 0.2"
+                class="clickable"
+                clickable-sphere="content: <img src='https://firebrick-fly-833771.hostingersite.com/ar/assets/1.png' />"
+            >
+            </a-image>
+            <a-image 
+                    src="https://firebrick-fly-833771.hostingersite.com/ar/assets/pin/pin-2.png"
+                    position="0.6 -0.3 0"
+                    scale="0.2 0.2 0.2"
+                    radius="0.1"
+                    class="clickable"
+                    clickable-sphere="content: <img src='https://firebrick-fly-833771.hostingersite.com/ar/assets/2.png' />"
+            >
+            </a-image>
+            <a-image 
+                    src="https://firebrick-fly-833771.hostingersite.com/ar/assets/pin/pin-3.png"
+                    position="-0.5 0.5 0"
+                    scale="0.2 0.2 0.2"
+                    radius="0.1"
+                    class="clickable"
+                    clickable-sphere="content: <img src='https://firebrick-fly-833771.hostingersite.com/ar/assets/3.png' />"
+                >
+            </a-image>
+            <a-image 
+                    src="https://firebrick-fly-833771.hostingersite.com/ar/assets/pin/pin-4.png"
+                    position="-0.6 -0.3 0"
+                    scale="0.2 0.2 0.2"
+                    radius="0.1"
+                    class="clickable"
+                    clickable-sphere="content: <img src='https://firebrick-fly-833771.hostingersite.com/ar/assets/4.png' />"
+                >
+            </a-image>
+            </a-entity>
+        </a-nft>
+        <a-entity light="type: ambient; color: #FFF; intensity: 3"></a-entity>
+        <a-entity light="type: directional; color: #FFF; intensity: 5" position="1 1 1"></a-entity>
+        <a-entity light="type: point; color: #FFF; intensity: 5; distance: 50; decay: 1" position="0 5 0"></a-entity>
+        <a-entity camera look-controls>
+            <a-entity
+                cursor="fuse: false"
+                raycaster="objects: .clickable"
+                position="0 0 -1"
+                geometry="primitive: ring; radiusInner: 0.02; radiusOuter: 0.03"
+                material="color: white; shader: flat"
+            ></a-entity>
+        </a-entity>
+    </a-scene>
+</body>
+</html>
